@@ -8,6 +8,7 @@ from logging.handlers import RotatingFileHandler
 FTP_HOST = "ftp.bom.gov.au"
 FTP_DIR = "/anon/gen/fwo/"
 FILENAME = "IDT16000.xml"
+LOCATION = "Western"
 
 # Set the directory where this script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,8 +49,8 @@ def parse_forecast(xml_file):
 
     for area in root.findall(".//area"):
         desc = area.attrib.get("description", "").strip()
-        if desc == "Western":
-            logger.info("Found forecast area: Western")
+        if desc == LOCATION:
+            logger.info(f"Found forecast area: {LOCATION}")
             for period in area.findall("forecast-period"):
                 if period.attrib.get("index") == "0":
                     forecast_texts = [
@@ -62,10 +63,12 @@ def parse_forecast(xml_file):
                     else:
                         logger.info("No forecast text found in index=0")
                         return None
-            logger.info("'Western' area found but no forecast-period with index='0'")
+            logger.info(
+                f"'{LOCATION}' area found but no forecast-period with index='0'"
+            )
             return None
 
-    logger.info("Area with description='Western' not found in XML")
+    logger.info(f"Area with description='{LOCATION}' not found in XML")
     return None
 
 
