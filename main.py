@@ -5,6 +5,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from datetime import datetime, timezone
 
+
 # Constants
 FTP_HOST = "ftp.bom.gov.au"
 FTP_DIR = "/anon/gen/fwo/"
@@ -43,6 +44,29 @@ def download_file_from_ftp():
     return LOCAL_XML_PATH
 
 
+def get_issue_descriptor(issue_time_str):
+    # This assumes format like '2025-07-21T16:05:00+10:00'
+    # Strip the colon in timezone offset for strptime compatibility
+    if issue_time_str[-3] == ":":
+        issue_time_str = issue_time_str[:-3] + issue_time_str[-2:]
+    dt = datetime.strptime(issue_time_str, "%Y-%m-%dT%H:%M:%S%z")
+
+    local_time = dt.strftime("%A")  # e.g., Monday
+    hour = dt.hour
+
+    if 5 <= hour < 12:
+        part_of_day = "morning"
+    elif 12 <= hour < 17:
+        part_of_day = "afternoon"
+    elif 17 <= hour < 21:
+        part_of_day = "evening"
+    else:
+        part_of_day = "night"
+
+    time_formatted = dt.strftime("%-I:%M%p").lower()  # e.g., 4:05pm
+    return f"Issued {local_time} {part_of_day} at {time_formatted}"
+
+
 # This parses the XML and returns forecast for the west coast
 def parse_forecast(xml_file):
     tree = ET.parse(xml_file)
@@ -51,12 +75,23 @@ def parse_forecast(xml_file):
     now = datetime.now(timezone.utc).astimezone()
     forecast_lines = []
 
-    # Look for warning-summary
+    # Extract issue time from <amoc>
+    amoc = root.find("amoc")
+    if amoc is not None:
+        issue_time_local = amoc.findtext("issue-time-local")
+        if issue_time_local:
+            issue_descriptor = get_issue_descriptor(issue_time_local)
+            logger.info(f"Issue time descriptor: {issue_descriptor}")
+            forecast_lines.append(issue_descriptor)
+            forecast_lines.append("")
+
+    # Look for warning-summary anywhere in document
     warning = root.find(".//warning-summary")
     if warning is not None and warning.text and warning.text.strip():
         warning_text = warning.text.strip()
         logger.info(f"Found warning-summary: {warning_text}")
-        forecast_lines.append(f"{warning_text}. ")
+        forecast_lines.append(f"Warning Summary: {warning_text}.")
+        forecast_lines.append("")
 
     for area in root.findall(".//area"):
         desc = area.attrib.get("description", "").strip()
@@ -83,24 +118,16 @@ def parse_forecast(xml_file):
                 )
 
                 if start_time > now:
+                    # forecast_lines.append(f"{desc}\n")
+
                     for t in period.findall("text"):
-                        t_type = t.attrib.get("type", "")
                         t_value = (t.text or "").strip()
-
                         if t_value:
-                            # readable_label = t_type.replace("_", " ").capitalize()
-                            line = f"{t_value}"
-                            logger.info(f"Found text: {line}")
-                            forecast_lines.append(line)
+                            logger.info(f"Found text: {t_value}")
+                            forecast_lines.append(t_value)
 
-                    if forecast_lines:
-                        logger.info("Successfully extracted forecast + warnings.")
-                        return "\n".join(forecast_lines)
-                    else:
-                        logger.info(
-                            "No <text> tags with content found in future period."
-                        )
-                        return None
+                    logger.info("Successfully extracted forecast + warnings.")
+                    return "\n".join(forecast_lines)
 
             logger.info(
                 f"'{LOCATION}' area found but no forecast-period with future start-time-local"
