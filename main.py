@@ -3,12 +3,13 @@ import os
 import xml.etree.ElementTree as ET
 import logging
 from logging.handlers import RotatingFileHandler
+from datetime import datetime, timezone
 
 # Constants
 FTP_HOST = "ftp.bom.gov.au"
 FTP_DIR = "/anon/gen/fwo/"
-FILENAME = "IDT16000.xml"
-LOCATION = "Western"
+FILENAME = "IDT12329.xml"
+LOCATION = "Far North West Coast: Sandy Cape to Stanley"
 
 # Set the directory where this script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,24 +48,62 @@ def parse_forecast(xml_file):
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
+    now = datetime.now(timezone.utc).astimezone()
+    forecast_lines = []
+
+    # Look for warning-summary
+    warning = root.find(".//warning-summary")
+    if warning is not None and warning.text and warning.text.strip():
+        warning_text = warning.text.strip()
+        logger.info(f"Found warning-summary: {warning_text}")
+        forecast_lines.append(f"{warning_text}. ")
+
     for area in root.findall(".//area"):
         desc = area.attrib.get("description", "").strip()
         if desc == LOCATION:
             logger.info(f"Found forecast area: {LOCATION}")
-            for period in area.findall("forecast-period"):
-                if period.attrib.get("index") == "0":
-                    forecast_texts = [
-                        t.text.strip()
-                        for t in period.findall("text")
-                        if t.text and t.attrib.get("type") == "forecast"
-                    ]
-                    if forecast_texts:
-                        return "\n".join(forecast_texts)
+
+            forecast_periods = area.findall("forecast-period")
+            logger.info(f"Total forecast-periods found: {len(forecast_periods)}")
+
+            for period in forecast_periods:
+                start_time_str = period.attrib.get("start-time-local", "").strip()
+                try:
+                    start_time = datetime.strptime(
+                        start_time_str, "%Y-%m-%dT%H:%M:%S%z"
+                    )
+                except ValueError:
+                    logger.warning(
+                        f"Could not parse start-time-local: {start_time_str}"
+                    )
+                    continue
+
+                logger.info(
+                    f"Checking forecast-period with start-time-local={start_time_str}"
+                )
+
+                if start_time > now:
+                    for t in period.findall("text"):
+                        t_type = t.attrib.get("type", "")
+                        t_value = (t.text or "").strip()
+
+                        if t_value:
+                            # readable_label = t_type.replace("_", " ").capitalize()
+                            line = f"{t_value}"
+                            logger.info(f"Found text: {line}")
+                            forecast_lines.append(line)
+
+                    if forecast_lines:
+                        logger.info("Successfully extracted forecast + warnings.")
+                        return "\n".join(forecast_lines)
                     else:
-                        logger.info("No forecast text found in index=0")
+                        logger.info(
+                            "No <text> tags with content found in future period."
+                        )
                         return None
+
             logger.info(
-                f"'{LOCATION}' area found but no forecast-period with index='0'"
+                f"'{LOCATION}' area found but no forecast-period with future start-time-local"
             )
             return None
 
@@ -97,7 +136,7 @@ def save_forecast_to_txt(forecast_text):
 def main():
     try:
         xml_path = download_file_from_ftp()
-        # debug_list_all_areas(xml_path)  # uncomment to call debug
+        debug_list_all_areas(xml_path)  # uncomment to call debug
         forecast = parse_forecast(xml_path)
         save_forecast_to_txt(forecast)
     except Exception as e:
