@@ -45,13 +45,12 @@ def download_file_from_ftp():
 
 
 def get_issue_descriptor(issue_time_str):
-    # This assumes format like '2025-07-21T16:05:00+10:00'
     # Strip the colon in timezone offset for strptime compatibility
     if issue_time_str[-3] == ":":
         issue_time_str = issue_time_str[:-3] + issue_time_str[-2:]
     dt = datetime.strptime(issue_time_str, "%Y-%m-%dT%H:%M:%S%z")
 
-    local_time = dt.strftime("%A")  # e.g., Monday
+    local_time = dt.strftime("%A")
     hour = dt.hour
 
     if 5 <= hour < 12:
@@ -63,8 +62,8 @@ def get_issue_descriptor(issue_time_str):
     else:
         part_of_day = "night"
 
-    time_formatted = dt.strftime("%-I:%M%p").lower()  # e.g., 4:05pm
-    return f"Issued {local_time} {part_of_day} at {time_formatted}"
+    time_formatted = dt.strftime("%-I:%M%p").lower()
+    return f"Issued {local_time} {part_of_day} at {time_formatted}."
 
 
 # This parses the XML and returns forecast for the west coast
@@ -84,6 +83,21 @@ def parse_forecast(xml_file):
             logger.info(f"Issue time descriptor: {issue_descriptor}")
             forecast_lines.append(issue_descriptor)
             forecast_lines.append("")
+
+    # find synoptic summary
+    for area in root.findall(".//area"):
+        if area.attrib.get("description") == "Tasmania":
+            forecast_period = area.find("forecast-period")
+            if forecast_period is not None:
+                for t in forecast_period.findall("text"):
+                    if t.attrib.get("type") == "synoptic_situation":
+                        synoptic_text = (t.text or "").strip()
+                        if synoptic_text:
+                            logger.info(f"Found synoptic situation: {synoptic_text}")
+                            forecast_lines.append("Weather Situation:")
+                            forecast_lines.append(synoptic_text)
+                            forecast_lines.append("")
+            break
 
     # Look for warning-summary anywhere in document
     warning = root.find(".//warning-summary")
@@ -121,10 +135,13 @@ def parse_forecast(xml_file):
                     # forecast_lines.append(f"{desc}\n")
 
                     for t in period.findall("text"):
+                        t_type = t.attrib.get("type", "")
                         t_value = (t.text or "").strip()
                         if t_value:
+                            readable_label = t_type.replace("_", " ").capitalize()
                             logger.info(f"Found text: {t_value}")
-                            forecast_lines.append(t_value)
+                            line = f"{readable_label}: {t_value}"
+                            forecast_lines.append(line)
 
                     logger.info("Successfully extracted forecast + warnings.")
                     return "\n".join(forecast_lines)
@@ -163,7 +180,7 @@ def save_forecast_to_txt(forecast_text):
 def main():
     try:
         xml_path = download_file_from_ftp()
-        debug_list_all_areas(xml_path)  # uncomment to call debug
+        # debug_list_all_areas(xml_path)  # uncomment to call debug
         forecast = parse_forecast(xml_path)
         save_forecast_to_txt(forecast)
     except Exception as e:

@@ -1,9 +1,12 @@
-Issued Monday afternoon at 4:05pm
+Issued Tuesday night at 10:00pm.
 
-Warning Summary: Strong Wind Warning for Monday for Far North West Coast.
+Weather Situation:
+A cold front crosses over Tasmania, as associated low pressure system nears the west coast before slipping to the southwest of Tasmania. A cool westerly flow is expected to develop on Wednesday, as a high pressure system over inland Australia extends a ridge southwards over Tasmania into Thursday. The high centre is expected to move into the Tasman Sea on Friday, with the ridge to move to the east of the state.
 
-North to northeasterly 20 to 30 knots, turning northwesterly 25 to 35 knots in the late afternoon.
-2 to 3 metres, increasing to 2 to 4 metres offshore.
-Northwest to southwesterly 1 to 2 metres, increasing to 2.5 to 4 metres south of King Island.
-East to northeasterly below 1 metre, increasing to 1 to 1.5 metres east of King Island during the afternoon.
-Cloudy. Near 100% chance of showers.
+Warning Summary: Gale Warning for Tuesday for Far North West Coast.
+
+Forecast winds: Northwesterly 25 to 30 knots, reaching up to 40 knots early in the morning. Winds turning west to southwesterly 20 to 30 knots during the morning.
+Forecast seas: 4 to 7 metres, decreasing to 2.5 to 4 metres during the morning, then decreasing to 1.5 to 2.5 metres during the afternoon.
+Forecast swell1: Westerly 3 to 5 metres, tending southwesterly 2 to 4 metres around midday.
+Forecast swell2: East to northeasterly 1 to 1.5 metres, decreasing below 1 metre during the morning.
+Forecast weather: Cloudy. 95% chance of showers, with possible small hail.
