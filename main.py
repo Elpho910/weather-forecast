@@ -131,19 +131,35 @@ def parse_forecast(xml_file):
                     f"Checking forecast-period with start-time-local={start_time_str}"
                 )
 
-                if start_time > now:
-                    # forecast_lines.append(f"{desc}\n")
+                if forecast_periods:
+                    first_period = forecast_periods[0]
+                    start_time_str = first_period.attrib.get(
+                        "start-time-local", ""
+                    ).strip()
+                    try:
+                        start_time = datetime.strptime(
+                            start_time_str, "%Y-%m-%dT%H:%M:%S%z"
+                        )
+                    except ValueError:
+                        logger.warning(
+                            f"Could not parse start-time-local: {start_time_str}"
+                        )
+                        return None
 
-                    for t in period.findall("text"):
+                    logger.info(
+                        f"Using forecast-period with start-time-local={start_time_str}"
+                    )
+
+                    for t in first_period.findall("text"):
                         t_type = t.attrib.get("type", "")
                         t_value = (t.text or "").strip()
                         if t_value:
-                            readable_label = t_type.replace("_", " ").capitalize()
+                            readable_label = t_type.replace("_", " ")
                             logger.info(f"Found text: {t_value}")
                             line = f"{readable_label}: {t_value}"
                             forecast_lines.append(line)
 
-                    logger.info("Successfully extracted forecast + warnings.")
+                    logger.info("Successfully extracted forecast.")
                     return "\n".join(forecast_lines)
 
             logger.info(
